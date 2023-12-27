@@ -87,7 +87,7 @@ class Shader : IDisposable
         GL.Uniform1(location, data);
     }
 
-    public void SetFloat(int location, int data)
+    public void SetFloat(int location, float data)
     {
         Use();
         GL.Uniform1(location, data);

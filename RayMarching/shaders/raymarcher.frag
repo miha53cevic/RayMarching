@@ -6,22 +6,17 @@ out vec4 FragColor;
 #define MAX_DISTANCE 100.0
 
 uniform vec2 resolution;
+uniform float time;
 
 // SignDistance Field formulas
 // https://iquilezles.org/articles/distfunctions/
-float opSmoothUnion( float d1, float d2, float k )
+float smoothMin( float d1, float d2, float k )
 {
     float h = clamp( 0.5 + 0.5*(d2-d1)/k, 0.0, 1.0 );
     return mix( d2, d1, h ) - k*h*(1.0-h);
 }
 
-float opSmoothSubtraction( float d1, float d2, float k )
-{
-    float h = clamp( 0.5 - 0.5*(d2+d1)/k, 0.0, 1.0 );
-    return mix( d2, -d1, h ) + k*h*(1.0-h);
-}
-
-float opSmoothIntersection( float d1, float d2, float k )
+float smoothMax( float d1, float d2, float k )
 {
     float h = clamp( 0.5 - 0.5*(d2-d1)/k, 0.0, 1.0 );
     return mix( d2, d1, h ) + k*h*(1.0-h);
@@ -34,16 +29,26 @@ float signedDistanceSphere(vec3 rayPosition, float radius)
 
 float signedDistanceBox(vec3 rayPosition, vec3 dimensions)
 {
-    vec3 q = abs(p) - dimensions;
+    vec3 q = abs(rayPosition) - dimensions;
     return length(max(q,0.0)) + min(max(q.x,max(q.y,q.z)),0.0);
 }
 
 float GetSceneObjectsDistance(vec3 rayPosition)
 {
-    // Sfera radijusa 1
-    // Ako je rayPosition na rubu sfere onda dobimo 0 i to je intersection, ako je unutar onda je < 0, 
-    // ako je > 0 onda je udaljen jos pa budemo povecali krug trazenja itd...
-    return length(rayPosition) - 1.0;
+    // translatacija je samo mijenjanje pozicije ray odnosno dobiva se osjecaj da se cijeli world mice od kamere
+    vec3 sideToSideTranslation = vec3(rayPosition.x + sin(time) * 4, rayPosition.yz);
+    float sphere = signedDistanceSphere(sideToSideTranslation, 1);
+
+    // Kod skaliranja potrebno je nakon jos podijliti sa skaliranim faktorom rezultat
+    vec3 scaled = vec3(rayPosition.xyz) * 2; // skaliranje je obrnuto takoder, puta 2 stvara dva puta manje
+    float cube = signedDistanceBox(scaled, vec3(1)) / 2;
+
+    float ground = rayPosition.y + 0.75; // + 0.75 pomaknuti pod ispod kamere jer je na istoj razini kak i kamera
+
+    return min(
+        ground,
+        smoothMin(sphere, cube, 2.0)
+    );
 }
 
 void RayMarching(vec2 uv)
