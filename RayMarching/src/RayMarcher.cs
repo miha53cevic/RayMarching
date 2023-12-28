@@ -1,5 +1,6 @@
 ﻿using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
+using OpenTK.Windowing.GraphicsLibraryFramework;
 
 namespace RayMarching;
 
@@ -30,6 +31,14 @@ public class RayMarcher
         _vao.Unbind();
 
         _vao.DefineVertexAttribPointer(_vbo, 0, 2, 2 * sizeof(float), 0);
+    }
+
+    public void Update(KeyboardState keyInput)
+    {
+        if (keyInput.IsKeyPressed(Keys.R))
+        {
+            this._shader.Reload();
+        }
     }
 
     public void Render(Vector2i resolution, float totaltime)

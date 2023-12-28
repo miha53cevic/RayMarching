@@ -37,6 +37,8 @@ public class Game : GameWindow
     protected override void OnUpdateFrame(FrameEventArgs args)
     {
         base.OnUpdateFrame(args);
+
+        _rayMarcher?.Update(KeyboardState);
     }
 
     protected override void OnRenderFrame(FrameEventArgs args)

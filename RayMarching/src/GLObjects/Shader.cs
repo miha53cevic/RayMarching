@@ -7,11 +7,21 @@ class Shader : IDisposable
 {
     private int _handle = -1;
     private bool disposedValue = false;
+    private readonly string _vertexPath;
+    private readonly string _fragmentPath;
 
     public Shader(string vertexPath, string fragmentPath)
     {
-        string vertexShaderSrc = File.ReadAllText(vertexPath);
-        string fragmentShaderSrc = File.ReadAllText(fragmentPath);
+        this._vertexPath = vertexPath;
+        this._fragmentPath = fragmentPath;
+
+        this.CompileShader();
+    }
+
+    private void CompileShader()
+    {
+        string vertexShaderSrc = File.ReadAllText(this._vertexPath);
+        string fragmentShaderSrc = File.ReadAllText(this._fragmentPath);
 
         int vertexShader = GL.CreateShader(ShaderType.VertexShader);
         GL.ShaderSource(vertexShader, vertexShaderSrc);
@@ -19,14 +29,13 @@ class Shader : IDisposable
         int fragmentShader = GL.CreateShader(ShaderType.FragmentShader);
         GL.ShaderSource(fragmentShader, fragmentShaderSrc);
 
-
         int success;
         GL.CompileShader(vertexShader);
         GL.GetShader(vertexShader, ShaderParameter.CompileStatus, out success);
         if (success == 0)
         {
             string infoLog = GL.GetShaderInfoLog(vertexShader);
-            Console.WriteLine(infoLog);
+            throw new Exception(infoLog);
         }
 
         GL.CompileShader(fragmentShader);
@@ -34,7 +43,7 @@ class Shader : IDisposable
         if (success == 0)
         {
             string infoLog = GL.GetShaderInfoLog(fragmentShader);
-            Console.WriteLine(infoLog);
+            throw new Exception(infoLog);
         }
 
         _handle = GL.CreateProgram();
@@ -43,6 +52,10 @@ class Shader : IDisposable
         GL.LinkProgram(_handle);
 
         GL.GetProgram(_handle, GetProgramParameterName.LinkStatus, out success);
+        if (success == 0)
+        {
+            throw new Exception(string.Format("[Shader]: Link error"));
+        }
 
         // Cleanup, since they are linked now to the shader program
         GL.DetachShader(_handle, vertexShader);
@@ -54,9 +67,24 @@ class Shader : IDisposable
         Console.WriteLine(string.Format("[Shader]: Loaded {0} uniforms", count));
     }
 
+    public void Reload()
+    {
+        Console.WriteLine(string.Format("[Shader]: Hot Reload {0}, {1}", this._vertexPath, this._fragmentPath));
+        
+        int oldProgramHandle = this._handle;
+        try {
+            this.CompileShader();
+            GL.DeleteProgram(oldProgramHandle);
+        } catch(Exception ex)
+        {
+            this._handle = oldProgramHandle;
+            Console.WriteLine(string.Format("[Shader]: Could not compile new shader source on hot reload, {0}", ex.Message));
+        }
+    }
+
     public void Use()
     {
-        GL.UseProgram(_handle);
+        GL.UseProgram(this._handle);
     }
 
     public int GetUniformLocation(string name)
