@@ -67,9 +67,37 @@ vec3 infinity(vec3 rayPosition, float modFactor)
     return mod(rayPosition, modFactor) - (modFactor / 2); // oduzimamo 0.5 jer inace bi samo 1/4 mogli vidjeti jer je ostalo clipped, ako je pocetni objekt u sredini
 }
 
+vec3 pallete(float t, int variant)
+{
+    switch(variant)
+    {
+        case 0: 
+            return vec3(0.5) + vec3(0.5) * cos(6.28318 * (vec3(1.0) * t + vec3(0,0.33,0.67)));
+            break;
+        case 1: 
+            return vec3(0.5) + vec3(0.5) * cos(6.28318 * (vec3(1.0) * t + vec3(0,0.1,0.2)));
+            break;
+        case 2: 
+            return vec3(0.5) + vec3(0.5) * cos(6.28318 * (vec3(1.0) * t + vec3(0.3,0.2,0.2)));
+            break;
+        case 3: 
+            return vec3(0.5) + vec3(0.5) * cos(6.28318 * (vec3(1.0,1.0,0.5) * t + vec3(0.8,0.9,0.3)));
+            break;
+    }
+}
+
+vec3 pallete2(float t)
+{
+    vec3 a = vec3(0.5);
+    vec3 b = vec3(0.5);
+    vec3 c = vec3(1.0);
+    vec3 d = vec3(0.0, 0.1, 0.2);
+    return a + b * cos(6.28318 * (c * t + d));
+}
+
 float GetSceneObjectsDistance(vec3 rayPosition)
 {
-    float ground = rayPosition.y + 0.75; // + 0.75 pomaknuti pod ispod kamere jer je na istoj razini kak i kamera
+    float ground = rayPosition.y + 1.0; // + x.xx pomaknuti pod ispod kamere jer je na istoj razini kak i kamera
 
     float sphere = signedDistanceSphere(translate(rayPosition, vec3(sin(time) * 4, 0, 0)), 1);
     float cube = signedDistanceBox(infinity(rayPosition, 1.0), vec3(0.1));
@@ -78,6 +106,7 @@ float GetSceneObjectsDistance(vec3 rayPosition)
     vec3 rotationXY = rotate(rotationX, vec3(0,1,0), time);
     float rotatedCube = signedDistanceBox(rotationXY, vec3(1));
 
+    // TODO return objectId with distance for object based coloring later
     return min(
         ground,
         min(
@@ -103,7 +132,18 @@ void RayMarching(vec2 uv)
 
         totalDistanceTraveled += distanceToNearestObject;
 
-        outputColor = vec3(i) / STEPS; // render svjetlije ovisno o daljini od ruba objekta
+        // Color ground different
+        if (distanceToNearestObject == rayPosition.y + 1.0)
+        {
+            float scale = 0.25;
+            vec3 flooredPosition = floor(rayPosition / scale);
+            float checkerboard = flooredPosition.x + flooredPosition.y + flooredPosition.z;
+            checkerboard /= 2.0; // x.5 for odd and x.0 for even
+            float patternMask = fract(checkerboard); // equals mod(x,1.0), returns fractional part (.5 or .0)
+            patternMask *= 2.0; // gray tiles become black
+            outputColor = vec3(1) * patternMask;
+        }
+        else outputColor = pallete(totalDistanceTraveled * 0.1, 1);
 
         // Prvi slucaj jako smo blizu objektu, pa stalno je distance do njega manji i manji, ali ga nikad ne udarimo, drugi nismo nasli nikaj
         // na dovoljno velikom prostoru (kruznici radijusa distanceToNearestObject)
