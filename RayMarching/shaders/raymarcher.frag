@@ -138,6 +138,32 @@ SDFObject GetSceneNearestObject(vec3 rayPosition)
     return SDFObject(-1, minDistance);
 }
 
+// Diffuse shading, lightning model of the video below
+// https://www.youtube.com/watch?v=PGtv-dBi2wE
+vec3 CalculateNormal(vec3 pointOnSurface)
+{
+    float distanceToNearestObject = GetSceneNearestObject(pointOnSurface).dist;
+    float epsilon = 0.001;
+    vec2 e = vec2(epsilon, 0.0);
+
+    vec3 normal = distanceToNearestObject - vec3(
+        GetSceneNearestObject(pointOnSurface - e.xyy).dist,
+        GetSceneNearestObject(pointOnSurface - e.yxy).dist,
+        GetSceneNearestObject(pointOnSurface - e.yyx).dist
+    );
+    return normalize(normal);
+}
+
+float GetLight(vec3 pointOnSurface)
+{
+    vec3 lightPosition = vec3(5, 1, -3);
+    vec3 lightDir = normalize(lightPosition - pointOnSurface);
+    vec3 normal = CalculateNormal(pointOnSurface);
+
+    float diffuse = clamp(dot(normal, lightDir), 0.0, 1.0);
+    return diffuse;
+}
+
 void RayMarching(vec2 uv)
 {
     vec3 rayOrigin = vec3(0, 0, -3);
@@ -166,7 +192,7 @@ void RayMarching(vec2 uv)
             patternMask *= 2.0; // gray tiles become black
             outputColor = vec3(1) * patternMask;
         }
-        else outputColor = pallete(totalDistanceTraveled * 0.1, 1);
+        else outputColor = pallete(totalDistanceTraveled * 0.1, 1) * vec3(GetLight(rayPosition));
 
         // Prvi slucaj jako smo blizu objektu, pa stalno je distance do njega manji i manji, ali ga nikad ne udarimo, drugi nismo nasli nikaj
         // na dovoljno velikom prostoru (kruznici radijusa distanceToNearestObject)
@@ -178,8 +204,6 @@ void RayMarching(vec2 uv)
         }
     }
     //outputColor = vec3(totalDistanceTraveled * 0.1); // svjetlije ako je udaljenost velika od objekta
-
-    // TODO shading: https://iquilezles.org/articles/rmshadows/
 
     FragColor = vec4(outputColor, 1.0);
 }
